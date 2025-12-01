@@ -1,0 +1,22 @@
+data:
+  db: imdb
+
+model:
+  model_name: EfficientNetB3
+  img_size: 224
+
+train:
+  optimizer_name: adam
+  lr: 0.001
+  epochs: 10
+  batch_size: 32
+  alpha_age_loss: 0.5  # weight for MAE component vs distribution KLD
+  finetune_layers: 2   # number of top layers to unfreeze for fine-tuning
+  mixup_alpha: 0.2
+  mixup_prob: 0.5
+  cutmix_prob: 0.3
+  warmup_epochs: 2
+  unfreeze_after: 3
+
+wandb:
+  project: null
