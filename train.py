@@ -40,7 +40,6 @@ def main():
     cfg = OmegaConf.load(Path(__file__).parent.joinpath('src', 'config.yaml'))
     # allow CLI flag to trigger demo generation
     if args.generate_demo:
-        import os
         os.environ['GENERATE_DEMO'] = '1'
     set_seed(int(cfg.train.get('seed', 42)))
 
