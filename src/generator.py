@@ -57,9 +57,13 @@ class ImageSequence(Sequence):
                 if "img_paths" in row
                 else self.img_dir.joinpath(row["image"])
             )
-            img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+            # avoid noisy OpenCV warning by checking file existence first
+            if not img_path.exists():
+                img = None
+            else:
+                img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
             if img is None:
-                # replace unreadable image with zeros
+                # replace unreadable or missing image with zeros
                 img = np.zeros((self.img_size, self.img_size, 3), dtype=np.uint8)
             else:
                 img = cv2.resize(img, (self.img_size, self.img_size))
