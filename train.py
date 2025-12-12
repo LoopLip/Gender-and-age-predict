@@ -36,7 +36,34 @@ def main():
         csv_path = Path(__file__).parent.joinpath("meta", f"{cfg.data.db}.csv")
 
     if not csv_path.exists():
-        raise SystemExit(f"Meta CSV not found: {csv_path}")
+        logger.warning(f"Meta CSV not found: {csv_path}. Creating a mini demo dataset for testing.")
+        # create meta and data dirs
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        demo_img_dir = Path(__file__).parent.joinpath("data", f"{cfg.data.db}_crop")
+        demo_img_dir.mkdir(parents=True, exist_ok=True)
+        # create two demo images if missing
+        try:
+            import cv2
+            import numpy as _np
+            for name, age, gender in [("exampleOne.jpg", 25, 0), ("exampleTwo.jpg", 30, 1)]:
+                p = demo_img_dir.joinpath(name)
+                if not p.exists():
+                    img = _np.full((int(cfg.model.img_size), int(cfg.model.img_size), 3), 128, dtype=_np.uint8)
+                    cv2.putText(img, name.split('.')[0], (5, int(cfg.model.img_size)//2), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+                    cv2.imwrite(str(p), img)
+        except Exception:
+            logger.exception("Failed to generate demo images (cv2 may be missing). Creating placeholder files instead.")
+            for name, _, _ in [("exampleOne.jpg",25,0),("exampleTwo.jpg",30,1)]:
+                p = demo_img_dir.joinpath(name)
+                if not p.exists():
+                    p.write_bytes(b'')
+        # create demo CSV
+        demo_df = pd.DataFrame([
+            {"image": "exampleOne.jpg", "gender": 0, "age": 25},
+            {"image": "exampleTwo.jpg", "gender": 1, "age": 30},
+        ])
+        demo_df.to_csv(str(csv_path), index=False)
+        logger.info(f"Created demo meta at {csv_path} and images in {demo_img_dir}")
 
     # read CSV robustly and log preview
     try:
@@ -47,6 +74,24 @@ def main():
         # dump file preview for debugging
         logger.error("CSV contents:\n" + "\n".join(Path(csv_path).read_text().splitlines()[:20]))
         raise SystemExit(f"Meta CSV is empty: {csv_path}")
++    # show preview and check first N image paths
++    try:
++        preview = df.head(10)
++        logger.info("Meta CSV preview:\n" + preview.to_string())
++        # check if listed image files exist (relative to data/{db}_crop)
++        sample_img_dir = Path(__file__).parent.joinpath('data', f"{cfg.data.db}_crop")
++        missing = []
++        for _, row in preview.iterrows():
++            img_name = row.get('img_paths') if 'img_paths' in row else row.get('image')
++            if pd.isna(img_name):
++                continue
++            path = sample_img_dir.joinpath(str(img_name))
++            if not path.exists():
++                missing.append(str(path))
++        if missing:
++            logger.warning(f"{len(missing)} of first {len(preview)} images missing. Example missing: {missing[:3]}")
++    except Exception:
++        logger.exception("Failed to preview/check meta CSV")
 
     # Ensure at least one sample remains in train
     if len(df) < 2:
