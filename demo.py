@@ -109,7 +109,11 @@ def main():
         if local.exists():
             weight_file = str(local)
         else:
-            raise FileNotFoundError(f"Weight file not provided and local pretrained model not found at {local}. Place weights there or pass --weight_file.")
+            logger.warning(
+                f"Weight file not provided and local pretrained model not found at {local}. Demo will not run inference without weights."
+            )
+            print("Provide weights via --weight_file or place pretrained model in pretrained_models/ to run demo.")
+            return
 
     # for face detection
     detector = dlib.get_frontal_face_detector()
