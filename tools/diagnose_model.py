@@ -1,13 +1,18 @@
-"""
-Diagnostic script to inspect model outputs on sample images.
+"""Diagnostic script to inspect model outputs on sample images.
 Usage:
-  python tools\diagnose_model.py [--weights path/to/weights] [--n 3]
+  python tools/diagnose_model.py [--weights path/to/weights] [--n 3]
 
 It loads latest checkpoint or provided weights, runs predictions on several images from data/{db}_crop,
 computes expected age and prints top-5 age probabilities.
 """
 from pathlib import Path
 import sys
+import os
+# ensure repo root is on sys.path so 'src' can be imported
+repo_root = Path(__file__).resolve().parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
 import traceback
 import argparse
 import numpy as np
