@@ -109,11 +109,41 @@ def main():
         if local.exists():
             weight_file = str(local)
         else:
-            logger.warning(
-                f"Weight file not provided and local pretrained model not found at {local}. Demo will not run inference without weights."
-            )
-            print("Provide weights via --weight_file or place pretrained model in pretrained_models/ to run demo.")
-            return
+            # try to download weights from environment or config
+            download_url = os.environ.get('PRETRAINED_WEIGHTS_URL')
+            try:
+                cfg = OmegaConf.load(Path(__file__).resolve().parent.joinpath('src', 'config.yaml'))
+                # support config key: demo.weights_url
+                cfg_url = None
+                try:
+                    cfg_url = cfg.demo.weights_url
+                except Exception:
+                    cfg_url = None
+                if not download_url and cfg_url:
+                    download_url = cfg_url
+            except Exception:
+                download_url = download_url
+
+            if download_url:
+                logger.info(f"Attempting to download pretrained weights from {download_url}")
+                try:
+                    cache_dir = Path(__file__).resolve().parent.joinpath('pretrained_models')
+                    cache_dir.mkdir(parents=True, exist_ok=True)
+                    fname = download_url.split('/')[-1].split('?')[0]
+                    # use keras get_file to download into pretrained_models
+                    downloaded = get_file(fname, download_url, cache_dir=str(cache_dir), cache_subdir='')
+                    weight_file = str(downloaded)
+                    logger.info(f"Downloaded weights to {weight_file}")
+                except Exception:
+                    logger.exception("Failed to download pretrained weights")
+                    print("Failed to download weights; provide via --weight_file or place pretrained model in pretrained_models/")
+                    return
+            else:
+                logger.warning(
+                    f"Weight file not provided and local pretrained model not found at {local}. Demo will not run inference without weights."
+                )
+                print("Provide weights via --weight_file or place pretrained model in pretrained_models/ to run demo.")
+                return
 
     # for face detection
     detector = dlib.get_frontal_face_detector()

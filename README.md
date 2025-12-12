@@ -23,4 +23,7 @@ What's new (summary):
 
 See MODERNIZATION.md for full details and next steps.
 
-Current timestamp: 2025-11-30T20:30:52.056Z
+Note: demo.py can auto-download pretrained weights if a URL is provided via the environment variable PRETRAINED_WEIGHTS_URL or via src/config.yaml under demo.weights_url. Example:
+  set PRETRAINED_WEIGHTS_URL=https://example.com/path/to/EfficientNetB3_224_weights.hdf5
+
+Current timestamp: 2025-12-12T20:31:44.624Z
