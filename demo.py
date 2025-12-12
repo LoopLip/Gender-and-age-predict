@@ -143,16 +143,18 @@ def main():
                 logger.warning(
                     f"Weight file not provided and local pretrained model not found at {local}."
                 )
-                # fallback: try to use the latest checkpoint saved by train.py
+                # fallback: try to use the latest model checkpoint saved by train.py
                 checkpoint_dir = Path(__file__).resolve().parent.joinpath('checkpoint')
                 try:
                     if checkpoint_dir.exists():
-                        candidates = sorted(checkpoint_dir.glob('*'), key=lambda p: p.stat().st_mtime, reverse=True)
-                        if len(candidates) > 0:
+                        # consider only model files, not logs or csv
+                        candidates = [p for p in checkpoint_dir.glob('*') if p.suffix.lower() in ('.keras', '.h5', '.hdf5', '.ckpt', '.pt', '.pth')]
+                        candidates = sorted(candidates, key=lambda p: p.stat().st_mtime, reverse=True)
+                        if candidates:
                             weight_file = str(candidates[0])
                             logger.info(f"Using latest checkpoint for demo: {weight_file}")
                         else:
-                            logger.warning('No checkpoint files found in checkpoint/ directory.')
+                            logger.warning('No model checkpoint files found in checkpoint/ directory. Skipping non-model files.')
                     else:
                         logger.warning('No checkpoint directory found.')
                 except Exception:
