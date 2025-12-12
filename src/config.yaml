@@ -5,6 +5,8 @@ model:
   model_name: EfficientNetB3
   img_size: 224
   pretrained: true
+  # allow specifying a local path to pretrained backbone weights; if empty, Keras will download imagenet weights automatically
+  weights_path: ''
   # Optional: demo.weights_url can point to pretrained weights to auto-download for demo
   # demo:
   #   weights_url: "https://example.com/path/to/weights.hdf5"
@@ -12,7 +14,7 @@ model:
 train:
   optimizer_name: adam
   lr: 0.001
-  epochs: 10
+  epochs: 50
   batch_size: 32
   alpha_age_loss: 0.5  # weight for MAE component vs distribution KLD
   finetune_layers: 2   # number of top layers to unfreeze for fine-tuning

@@ -24,8 +24,24 @@ def set_seed(seed: int = 42):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--generate-demo', action='store_true')
+    args = parser.parse_args()
+
+    # create essential dirs
+    root = Path(__file__).parent
+    (root / 'data').mkdir(exist_ok=True)
+    (root / 'meta').mkdir(exist_ok=True)
+    (root / 'checkpoint').mkdir(exist_ok=True)
+    (root / 'pretrained_models').mkdir(exist_ok=True)
+
     # load config via OmegaConf for compatibility
     cfg = OmegaConf.load(Path(__file__).parent.joinpath('src', 'config.yaml'))
+    # allow CLI flag to trigger demo generation
+    if args.generate_demo:
+        import os
+        os.environ['GENERATE_DEMO'] = '1'
     set_seed(int(cfg.train.get('seed', 42)))
 
     # allow overriding CSV via env var (useful for local tests)
@@ -35,8 +51,15 @@ def main():
     else:
         csv_path = Path(__file__).parent.joinpath("meta", f"{cfg.data.db}.csv")
 
-    if not csv_path.exists():
-        logger.warning(f"Meta CSV not found: {csv_path}. Creating a mini demo dataset for testing.")
+    # support CLI flag --generate-demo via env var for backward compatibility
+    gen_demo = os.environ.get('GENERATE_DEMO', '0') == '1'
+
+    if not csv_path.exists() and not gen_demo:
+        logger.warning(f"Meta CSV not found: {csv_path}. Please provide dataset (IMDB-WIKI/UTK) or run with --generate-demo to create a tiny demo for tests. Training will abort until dataset available.")
+        raise SystemExit(1)
+
+    if not csv_path.exists() and gen_demo:
+        logger.info(f"Creating a mini demo dataset for testing at {csv_path}.")
         # create meta and data dirs
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         demo_img_dir = Path(__file__).parent.joinpath("data", f"{cfg.data.db}_crop")
@@ -99,13 +122,15 @@ def main():
 
     train_df, val_df = train_test_split(df, random_state=int(cfg.train.get('seed', 42)), test_size=0.1)
 
-    # use backbone-specific preprocess if available
+    # use backbone-specific preprocess if available and auto-download weights if requested
     preprocess_fn = get_preprocess_fn(cfg)
     if preprocess_fn is None:
         logger.info("No specific preprocess_fn found for backbone, using default 0-1 scaling")
     else:
         logger.info("Using backbone-specific preprocess_fn")
 
+    # if model requires pretrained weights, ensure Keras downloads them automatically via get_model (weights='imagenet')
+    # create data generators
     train_gen = ImageSequence(cfg, train_df, "train", preprocess_fn=preprocess_fn)
     val_gen = ImageSequence(cfg, val_df, "val", preprocess_fn=preprocess_fn)
 
@@ -270,6 +295,52 @@ def main():
             line = f"{epoch+1},{logs.get('loss', '')},{logs.get('val_loss', '')},{logs.get('val_pred_age_kullback_leibler_divergence', '')},{logs.get('val_pred_age_mae', '')}\n"
             self.path.write_text(self.path.read_text() + line)
     callbacks.append(SimpleCSVLogger(csv_log))
+
+    # callback to log sample predictions after each epoch
+    class SamplePredictionsCallback(tf.keras.callbacks.Callback):
+        def __init__(self, val_df, preprocess_fn, sample_count=3):
+            super().__init__()
+            self.val_df = val_df.reset_index(drop=True)
+            self.img_dir = Path(__file__).parent.joinpath('data', f"{cfg.data.db}_crop")
+            self.sample_count = sample_count
+            self.preprocess_fn = preprocess_fn
+            # choose first few available samples
+            self.samples = []
+            for i in range(min(len(self.val_df), 50)):
+                row = self.val_df.iloc[i]
+                img_name = row.get('img_paths') if 'img_paths' in row else row.get('image')
+                if pd.isna(img_name):
+                    continue
+                p = self.img_dir.joinpath(str(img_name))
+                if p.exists():
+                    self.samples.append((p, int(row.get('age', row.get('ages', 0))), int(row.get('gender', row.get('genders', 0)))))
+                if len(self.samples) >= self.sample_count:
+                    break
+
+        def on_epoch_end(self, epoch, logs=None):
+            import cv2
+            import numpy as _np
+            if not hasattr(self.model, 'predict'):
+                return
+            print('\nSample predictions after epoch', epoch+1)
+            for p, true_age, true_gender in self.samples:
+                img = cv2.imread(str(p))
+                if img is None:
+                    continue
+                img = cv2.resize(img, (int(cfg.model.img_size), int(cfg.model.img_size)))
+                img = img.astype(_np.float32) / 255.0
+                if self.preprocess_fn:
+                    img = self.preprocess_fn(img)
+                inp = _np.expand_dims(img, axis=0)
+                preds = self.model.predict(inp)
+                # preds: [gender_prob, age_dist]
+                gender_prob = preds[0][0] if isinstance(preds, list) else preds[0]
+                age_dist = preds[1][0] if isinstance(preds, list) else preds[1]
+                pred_age = int(_np.round(_np.sum(_np.arange(0,101) * age_dist)))
+                top5_idx = _np.argsort(age_dist)[-5:][::-1]
+                top5 = [(int(i), float(age_dist[i])) for i in top5_idx]
+                print(f"Image: {p.name} True age: {true_age} Pred age: {pred_age} Top-5 age probs: {top5}")
+    callbacks.append(SamplePredictionsCallback(val_df, preprocess_fn))
 
     # integrate wandb if configured
     if cfg.wandb.project:

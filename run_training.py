@@ -13,6 +13,7 @@ import io
 parser = argparse.ArgumentParser()
 parser.add_argument('--download-dataset', type=str, default=None, help='URL to download dataset zip (optional)')
 parser.add_argument('--generate-demo', action='store_true', help='Generate a small demo dataset for testing')
+parser.add_argument('--train-args', type=str, default='', help='Additional args passed to train.py')
 args = parser.parse_args()
 
 root = Path(__file__).resolve().parent
@@ -24,15 +25,23 @@ root = Path(__file__).resolve().parent
 
 if args.download_dataset:
     print('Downloading dataset from', args.download_dataset)
-    r = requests.get(args.download_dataset)
+    r = requests.get(args.download_dataset, stream=True)
+    r.raise_for_status()
     z = zipfile.ZipFile(io.BytesIO(r.content))
     z.extractall(root)
     print('Dataset extracted')
 
-# build train command
-cmd = ['python', 'train.py']
+import sys
+# build train command using the current Python interpreter
+cmd = [sys.executable, 'train.py']
 if args.generate_demo:
+    # export env var used by train.py to allow demo creation
+    import os
+    os.environ['GENERATE_DEMO'] = '1'
     cmd.append('--generate-demo')
+if args.train_args:
+    cmd.extend(args.train_args.split())
 
 print('Running training:', ' '.join(cmd))
-subprocess.check_call(cmd)
+# inherit current environment so venv packages are visible
+subprocess.check_call(cmd, env=None)

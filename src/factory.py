@@ -12,6 +12,7 @@ def get_model(cfg):
     cfg.model.pretrained: whether to load imagenet weights (bool)
     """
     weights = "imagenet" if getattr(cfg.model, "pretrained", False) else None
+    # Keras will attempt to download imagenet weights automatically if not present locally.
     base_model = getattr(applications, cfg.model.model_name)(
         include_top=False,
         weights=weights,
