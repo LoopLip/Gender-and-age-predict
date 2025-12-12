@@ -74,24 +74,24 @@ def main():
         # dump file preview for debugging
         logger.error("CSV contents:\n" + "\n".join(Path(csv_path).read_text().splitlines()[:20]))
         raise SystemExit(f"Meta CSV is empty: {csv_path}")
-+    # show preview and check first N image paths
-+    try:
-+        preview = df.head(10)
-+        logger.info("Meta CSV preview:\n" + preview.to_string())
-+        # check if listed image files exist (relative to data/{db}_crop)
-+        sample_img_dir = Path(__file__).parent.joinpath('data', f"{cfg.data.db}_crop")
-+        missing = []
-+        for _, row in preview.iterrows():
-+            img_name = row.get('img_paths') if 'img_paths' in row else row.get('image')
-+            if pd.isna(img_name):
-+                continue
-+            path = sample_img_dir.joinpath(str(img_name))
-+            if not path.exists():
-+                missing.append(str(path))
-+        if missing:
-+            logger.warning(f"{len(missing)} of first {len(preview)} images missing. Example missing: {missing[:3]}")
-+    except Exception:
-+        logger.exception("Failed to preview/check meta CSV")
+    # show preview and check first N image paths
+    try:
+        preview = df.head(10)
+        logger.info("Meta CSV preview:\n" + preview.to_string())
+        # check if listed image files exist (relative to data/{db}_crop)
+        sample_img_dir = Path(__file__).parent.joinpath('data', f"{cfg.data.db}_crop")
+        missing = []
+        for _, row in preview.iterrows():
+            img_name = row.get('img_paths') if 'img_paths' in row else row.get('image')
+            if pd.isna(img_name):
+                continue
+            path = sample_img_dir.joinpath(str(img_name))
+            if not path.exists():
+                missing.append(str(path))
+        if missing:
+            logger.warning(f"{len(missing)} of first {len(preview)} images missing. Example missing: {missing[:3]}")
+    except Exception:
+        logger.exception("Failed to preview/check meta CSV")
 
     # Ensure at least one sample remains in train
     if len(df) < 2:
