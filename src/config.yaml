@@ -4,7 +4,10 @@ data:
 model:
   model_name: EfficientNetB3
   img_size: 224
-  pretrained: false
+  pretrained: true
+  # Optional: demo.weights_url can point to pretrained weights to auto-download for demo
+  # demo:
+  #   weights_url: "https://example.com/path/to/weights.hdf5"
 
 train:
   optimizer_name: adam
