@@ -141,10 +141,26 @@ def main():
                     return
             else:
                 logger.warning(
-                    f"Weight file not provided and local pretrained model not found at {local}. Demo will not run inference without weights."
+                    f"Weight file not provided and local pretrained model not found at {local}."
                 )
-                print("Provide weights via --weight_file or place pretrained model in pretrained_models/ to run demo.")
-                return
+                # fallback: try to use the latest checkpoint saved by train.py
+                checkpoint_dir = Path(__file__).resolve().parent.joinpath('checkpoint')
+                try:
+                    if checkpoint_dir.exists():
+                        candidates = sorted(checkpoint_dir.glob('*'), key=lambda p: p.stat().st_mtime, reverse=True)
+                        if len(candidates) > 0:
+                            weight_file = str(candidates[0])
+                            logger.info(f"Using latest checkpoint for demo: {weight_file}")
+                        else:
+                            logger.warning('No checkpoint files found in checkpoint/ directory.')
+                    else:
+                        logger.warning('No checkpoint directory found.')
+                except Exception:
+                    logger.exception('Error while searching for checkpoint files')
+
+                if not weight_file:
+                    print("Provide weights via --weight_file, place pretrained model in pretrained_models/, or run training first to create a checkpoint.")
+                    return
 
     # for face detection
     detector = dlib.get_frontal_face_detector()
