@@ -4,6 +4,7 @@ data:
 model:
   model_name: EfficientNetB3
   img_size: 224
+  pretrained: false
 
 train:
   optimizer_name: adam

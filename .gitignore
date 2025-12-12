@@ -1,41 +1,60 @@
 
 # Python
 
+# Python
 __pycache__/
-
 *.py[cod]
-
 *.pyo
+*.pyd
 
+# Virtual environments
 venv/
+.venv/
+env/
+ENV/
 
+# Environment files
 .env
-
 .env.*
 
-
-
-# Data / results that should not be in repo
-
+# Data and large files
 data/
-
-checkpoint/
-
-pretrained_models/
-
+datasets/
+meta/
 results.csv
 
+# Checkpoints / pretrained weights / outputs
+checkpoint/
+pretrained_models/
+*.pt
+*.pth
+*.ckpt
 *.h5
+*.keras
 
+# Logs and caches
+*.log
+logs/
+tmp/
+*.tmp
+.pytest_cache/
 
-
-# IDE / OS files
-
+# IDEs and editors
 .vscode/
-
+.idea/
 *.sublime-workspace
 
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
 Thumbs.db
 
-.DS_Store
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Keep this file tracked
 

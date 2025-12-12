@@ -110,27 +110,35 @@ def main():
                         print(f"Unfroze top {self.finetune_layers} base layers at epoch {epoch+1}")
 
         def mixed_age_loss(y_true_int, y_pred_dist):
-            # y_true_int: either (batch,) int labels or (batch,101) distribution
+            # Normalize any incoming label format to a distribution (b,101): supports (b,), (b,1), (b,101)
             kernel_vals = tf.constant([0.05, 0.25, 0.4, 0.25, 0.05], dtype=tf.float32)
             kernel_1d = tf.reshape(kernel_vals, [-1, 1, 1])  # (kw, in_ch, out_ch)
 
-            def _process_as_int(y):
-                y_true = tf.cast(tf.reshape(y, [-1]), tf.int32)
-                one_hot = tf.one_hot(y_true, depth=101)  # (b,101)
-                inp = tf.expand_dims(one_hot, axis=2)  # (b,101,1)
-                smoothed = tf.nn.conv1d(inp, kernel_1d, stride=1, padding='SAME')  # (b,101,1)
-                smoothed = tf.squeeze(smoothed, axis=2)  # (b,101)
-                return smoothed
+            y = y_true_int
+            y_rank = tf.rank(y)
+            # if shape (b,): convert to int and one-hot
+            def _from_1d():
+                y0 = tf.cast(tf.reshape(y, [-1]), tf.int32)
+                return tf.one_hot(y0, depth=101)
+            # if shape (b,1): squeeze then one-hot if ints, or if floats assume distribution
+            def _from_2d():
+                s = tf.shape(y)
+                second = tf.gather(s, 1)
+                y2 = tf.reshape(y, [-1, second])
+                # if second==1 treat as ints
+                def _as_int2():
+                    vals = tf.cast(tf.reshape(y2, [-1]), tf.int32)
+                    return tf.one_hot(vals, depth=101)
+                def _as_dist2():
+                    return tf.cast(y2, tf.float32)
+                return tf.cond(tf.equal(second, 1), _as_int2, _as_dist2)
+            y_dist = tf.cond(tf.equal(y_rank, 1), _from_1d, _from_2d)
 
-            def _process_as_dist(y):
-                y_float = tf.cast(y, tf.float32)
-                inp = tf.expand_dims(y_float, axis=2)
-                smoothed = tf.nn.conv1d(inp, kernel_1d, stride=1, padding='SAME')
-                return tf.squeeze(smoothed, axis=2)
-
-            # use tf.cond to branch in graph mode
-            is_int = tf.equal(tf.rank(y_true_int), 1)
-            y_true_dist = tf.cond(is_int, lambda: _process_as_int(y_true_int), lambda: _process_as_dist(y_true_int))
+            # ensure float and add channel for conv1d via conv1d (expects [b, length, channels])
+            y_float = tf.cast(y_dist, tf.float32)
+            inp = tf.expand_dims(y_float, axis=2)  # (b,101,1)
+            smoothed = tf.nn.conv1d(inp, kernel_1d, stride=1, padding='SAME')  # (b,101,1)
+            y_true_dist = tf.squeeze(smoothed, axis=2)  # (b,101)
 
             # KLD between smoothed true distribution and predicted distribution
             kld = tf.keras.losses.KLDivergence()(y_true_dist, y_pred_dist)
@@ -144,18 +152,38 @@ def main():
         # compile model with mixed loss for age
         # define metrics: categorical_accuracy for gender and KLD+expected_mae for age
         kld_loss = tf.keras.losses.KLDivergence()
+        def _y_to_dist(y):
+            y = tf.convert_to_tensor(y)
+            rank = tf.rank(y)
+            def _from_1d():
+                y0 = tf.cast(tf.reshape(y, [-1]), tf.int32)
+                return tf.one_hot(y0, depth=101)
+            def _from_2d():
+                s = tf.shape(y)
+                second = tf.gather(s, 1)
+                y2 = tf.reshape(y, [-1, second])
+                def _as_int2():
+                    vals = tf.cast(tf.reshape(y2, [-1]), tf.int32)
+                    return tf.one_hot(vals, depth=101)
+                def _as_dist2():
+                    return tf.cast(y2, tf.float32)
+                return tf.cond(tf.equal(second, 1), _as_int2, _as_dist2)
+            return tf.cond(tf.equal(rank, 1), _from_1d, _from_2d)
+
         def kld_metric(y_true, y_pred):
-            return kld_loss(y_true, y_pred)
+            y_true_dist = _y_to_dist(y_true)
+            return kld_loss(y_true_dist, y_pred)
         def expected_age_mae(y_true, y_pred):
+            y_true_dist = _y_to_dist(y_true)
             ages = tf.range(0, 101, dtype=tf.float32)
-            true_exp = tf.reduce_sum(tf.cast(y_true, tf.float32) * ages[None, :], axis=1)
+            true_exp = tf.reduce_sum(tf.cast(y_true_dist, tf.float32) * ages[None, :], axis=1)
             pred_exp = tf.reduce_sum(y_pred * ages[None, :], axis=1)
             return tf.reduce_mean(tf.abs(true_exp - pred_exp))
 
         model.compile(
             optimizer=opt,
-            loss=["categorical_crossentropy", mixed_age_loss],
-            metrics=[ ["categorical_accuracy"], [kld_metric, expected_age_mae] ],
+            loss=["sparse_categorical_crossentropy", mixed_age_loss],
+            metrics=[ ["sparse_categorical_accuracy"], [kld_metric, expected_age_mae] ],
         )
 
     checkpoint_dir = Path(__file__).parent.joinpath("checkpoint")
