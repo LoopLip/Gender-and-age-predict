@@ -207,7 +207,22 @@ def main():
     cfg = OmegaConf.from_dotlist(
         [f"model.model_name={model_name}", f"model.img_size={img_size}"]
     )
-    model = get_model(cfg)
+    # try to create model; if model_name is invalid for keras.applications, fall back to config default
+    try:
+        model = get_model(cfg)
+    except AttributeError:
+        try:
+            cfg_file = Path(__file__).resolve().parent.joinpath('src', 'config.yaml')
+            cfg_full = OmegaConf.load(cfg_file)
+            model_name = cfg_full.model.model_name
+            img_size = int(cfg_full.model.img_size)
+            cfg = OmegaConf.from_dotlist([f"model.model_name={model_name}", f"model.img_size={img_size}"])
+            logger.warning(f"Model name in filename not recognized; falling back to config model={model_name} img_size={img_size}")
+            model = get_model(cfg)
+        except Exception as e:
+            logger.exception("Failed to create model from config fallback")
+            raise
+
     model.load_weights(weight_file)
     preprocess_fn = get_preprocess_fn(cfg)
 
