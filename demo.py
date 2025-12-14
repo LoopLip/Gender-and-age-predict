@@ -168,8 +168,42 @@ def main():
     detector = dlib.get_frontal_face_detector()
 
     # load model and weights
-    model_name, img_size = Path(weight_file).stem.split("_")[:2]
-    img_size = int(img_size)
+    # try to infer model name and img_size from filename like <ModelName>_<IMG_SIZE>_...;
+    # be robust to other names (e.g. your_best_weights.hdf5) by falling back to config defaults.
+    stem_parts = Path(weight_file).stem.split("_")
+    model_name = None
+    img_size = None
+    if len(stem_parts) >= 2:
+        # first token is likely model name, second token may be img_size
+        try:
+            candidate_size = int(stem_parts[1])
+            model_name = stem_parts[0]
+            img_size = candidate_size
+        except Exception:
+            # not parseable, try last numeric token
+            for p in stem_parts[::-1]:
+                try:
+                    img_size = int(p)
+                    break
+                except Exception:
+                    continue
+            model_name = stem_parts[0] if stem_parts else None
+    # if still not found, load defaults from src/config.yaml
+    if model_name is None or img_size is None:
+        try:
+            cfg_file = Path(__file__).resolve().parent.joinpath('src', 'config.yaml')
+            cfg_full = OmegaConf.load(cfg_file)
+            if model_name is None:
+                model_name = cfg_full.model.model_name
+            if img_size is None:
+                img_size = int(cfg_full.model.img_size)
+            logger.info(f"Falling back to config model={model_name} img_size={img_size}")
+        except Exception:
+            # final fallback
+            model_name = model_name or 'EfficientNetB3'
+            img_size = int(img_size or 224)
+            logger.warning(f"Using fallback model={model_name} img_size={img_size}")
+
     cfg = OmegaConf.from_dotlist(
         [f"model.model_name={model_name}", f"model.img_size={img_size}"]
     )
