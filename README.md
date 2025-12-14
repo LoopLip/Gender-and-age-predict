@@ -103,6 +103,32 @@ python demo.py --weight_file checkpoint\\EfficientNetB3_224_weights.12-0.81.kera
 ```
 Автозагрузка весов: можно указать URL в `src/config.yaml` (параметр `demo.weights_url`) или через переменную окружения `PRETRAINED_WEIGHTS_URL`.
 
+Дополнительные инструкции для переноса и использования готового файла весов (pretrained_models/your_best_weights.hdf5):
+
+1) Создайте папку pretrained_models в корне проекта (если ещё нет):
+
+    mkdir pretrained_models
+
+2) Скачайте файл весов в эту папку (PowerShell):
+
+    Invoke-WebRequest -Uri "https://example.com/your_best_weights.hdf5" -OutFile ".\pretrained_models\your_best_weights.hdf5"
+
+   Или с curl:
+
+    curl -L -o pretrained_models/your_best_weights.hdf5 "https://example.com/your_best_weights.hdf5"
+
+3) Запуск demo с явным путем к весам:
+
+    python demo.py --weight_file pretrained_models\\your_best_weights.hdf5
+
+4) Если предсказания отличаются от оригинального ПК, убедитесь, что demo применяет ту же нормализацию, что и обучающий генератор (в train: img = img.astype(np.float32)/255.0, затем preprocess_fn). В demo при необходимости добавьте перед вызовом preprocess_fn строку:
+
+```python
+faces_np = faces_np.astype(np.float32) / 255.0
+```
+
+5) Совместимость версий: используйте те же версии TensorFlow/Keras, как и на машине, где модель обучалась, чтобы избежать несовместимостей при загрузке/инференсе.
+
 ## 7. Диагностика модели
 Быстрая проверка работы модели — вывод expected_age и top-5 вероятностей для N изображений:
 ```
