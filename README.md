@@ -7,9 +7,10 @@
 - утилиты диагностики и демонстрационные скрипты.
 
 ## 2. Быстрый старт
+Скачайте файл весов: https://disk.yandex.ru/d/7s1i1rJq-LDRIw
+Скачать готовые фото для проверки: https://disk.yandex.ru/d/j22X9XsWIcQ1SQ
 ### Клонирование репозитория
 ```
-Скачайте файл весов: https://disk.yandex.ru/d/7s1i1rJq-LDRIw
 git clone https://github.com/LoopLip/Gender-and-age-predict.git
 cd Gender-and-age-predict
 ```
@@ -98,9 +99,13 @@ python run_training.py --download-dataset <URL>
 ```
 python demo.py
 ```
+Предсказания на готовых изображениях, скачанных в test_images
+```
+python demo.py --image_dir "test_images" --weight_file ".\pretrained_models\EfficientNetB3_224_your_best_weights.hdf5"
+```
 По умолчанию demo.py ищет последние чекпоинты в папке `checkpoint/`. Чтобы указать конкретный файл весов:
 ```
-python demo.py --weight_file checkpoint\\EfficientNetB3_224_weights.12-0.81.keras
+python demo.py --weight_file pretrained_models\EfficientNetB3_224_your_best_weights.hdf5
 ```
 Автозагрузка весов: можно указать URL в `src/config.yaml` (параметр `demo.weights_url`) или через переменную окружения `PRETRAINED_WEIGHTS_URL`.
 
