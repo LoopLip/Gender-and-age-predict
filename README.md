@@ -7,8 +7,12 @@
 - утилиты диагностики и демонстрационные скрипты.
 
 ## 2. Быстрый старт
-Скачайте файл весов: https://disk.yandex.ru/d/7s1i1rJq-LDRIw
-Скачать готовые фото для проверки: https://disk.yandex.ru/d/j22X9XsWIcQ1SQ
+Скачайте файл весов: 
+https://disk.yandex.ru/d/7s1i1rJq-LDRIw
+
+Скачать готовые фото для проверки: 
+https://disk.yandex.ru/d/j22X9XsWIcQ1SQ
+
 ### Клонирование репозитория
 ```
 git clone https://github.com/LoopLip/Gender-and-age-predict.git
