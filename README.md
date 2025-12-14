@@ -9,6 +9,7 @@
 ## 2. Быстрый старт
 ### Клонирование репозитория
 ```
+Скачайте файл весов: https://disk.yandex.ru/d/7s1i1rJq-LDRIw
 git clone https://github.com/LoopLip/Gender-and-age-predict.git
 cd Gender-and-age-predict
 ```
@@ -109,17 +110,11 @@ python demo.py --weight_file checkpoint\\EfficientNetB3_224_weights.12-0.81.kera
 
     mkdir pretrained_models
 
-2) Скачайте файл весов в эту папку (PowerShell):
-
-    Invoke-WebRequest -Uri "https://example.com/your_best_weights.hdf5" -OutFile ".\pretrained_models\your_best_weights.hdf5"
-
-   Или с curl:
-
-    curl -L -o pretrained_models/your_best_weights.hdf5 "https://example.com/your_best_weights.hdf5"
+2) Скачайте файл весов в эту папку (PowerShell): https://disk.yandex.ru/d/7s1i1rJq-LDRIw
 
 3) Запуск demo с явным путем к весам:
 
-    python demo.py --weight_file pretrained_models\\your_best_weights.hdf5
+    python demo.py --weight_file pretrained_models\EfficientNetB3_224_your_best_weights.hdf5
 
 4) Если предсказания отличаются от оригинального ПК, убедитесь, что demo применяет ту же нормализацию, что и обучающий генератор (в train: img = img.astype(np.float32)/255.0, затем preprocess_fn). В demo при необходимости добавьте перед вызовом preprocess_fn строку:
 
