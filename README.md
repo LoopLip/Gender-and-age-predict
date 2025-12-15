@@ -161,6 +161,3 @@ python tools\\diagnose_model.py --n 3
 - Репозиторий: https://github.com/LoopLip/Gender-and-age-predict
 - Датасеты: IMDb-WIKI (поиск в интернете), UTK Faces.
 
----
-
-Дата обновления: 2025-12-12T22:40:53.397Z
